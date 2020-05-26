@@ -1,0 +1,70 @@
+﻿@page "/convert"
+
+@inject IJSRuntime jsRunTime
+
+<div class="row">
+
+    <h3 class="col-12 text-center">Please copy and paster your appsetting/local json file</h3>
+    <textarea class="col-12" cols="15" rows="10" placeholder="Enter json" @bind="inputText" ></textarea>
+    <button class="offset-4 col-4 mt-2 mb-2" @onclick="ChangeValues">Change values</button>
+
+    <textarea id="outputText" class="col-12" cols="15" rows="10" @bind="outputText" style="display:@display"></textarea>
+</div>
+
+@functions {
+
+    private string inputText { get; set; } = "";
+    private string outputText { get; set; } = "";
+    private string display { get; set; } = "none";
+    private Dictionary<string, string> dictValue = new Dictionary<string, string>();
+    
+    public void ChangeValues()
+    {
+        if (!string.IsNullOrEmpty(inputText) && display == "none")
+        {
+            dictValue = new Dictionary<string, string>();
+            var result = ConvertToDict(JsonConvert.DeserializeObject(inputText), "");
+            outputText = JsonConvert.SerializeObject(result);
+
+            /// invoke js function
+            //jsRunTime.InvokeAsync<bool>("Prettyfy");
+        }
+        else
+        {
+            outputText = "";
+        }
+        display = display == "block" ? "none" : "block";
+        this.StateHasChanged();
+    }
+
+    private Dictionary<string, string> ConvertToDict(dynamic obj, string startingKey)
+    {
+        if (!string.IsNullOrEmpty(startingKey))
+        {
+            startingKey += ":";
+        }
+
+        foreach (var keyValue in obj)
+        {
+            string str = System.Convert.ToString(keyValue.Value?.Type);
+            if (str == null)
+            {
+                ConvertToDict(keyValue.Value, $"{startingKey}{keyValue.Name}");
+            }
+            else if (str.ToLower() == "array")
+            {
+                for (int i = 0; i < keyValue.Value.Count; i++)
+                {
+                    ConvertToDict(keyValue.Value[i], $"{startingKey}{keyValue.Name}:[{i}]");
+                }
+            }
+            else
+            {
+                dictValue.Add($"{startingKey}{keyValue.Name}", keyValue.Value.Value.ToString());
+            }
+        }
+
+        return dictValue;
+    }
+
+}
